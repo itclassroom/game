@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-HK">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#1f7a45" />
+    <meta
+      name="description"
+      content="香港小學二年級科學科測驗：把圖片分成生物和非生物。內有狗和機械狗，用來分辨「會動」和「有生命」。"
+    />
+    <title>生物與非生物 · 小二科學科</title>
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+    <link rel="manifest" href="site.webmanifest" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="css/styles.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#pool">跳到圖片</a>
+    <noscript>
+      <p class="noscript">請開啟瀏覽器的 JavaScript，這個測驗才能分類。</p>
+    </noscript>
+
+    <div class="welcome" id="welcome" role="dialog" aria-modal="true" aria-labelledby="welcome-title">
+      <div class="welcome-card">
+        <p class="eyebrow">香港小學二年級 · 科學科</p>
+        <h1 id="welcome-title">生物與非生物</h1>
+        <p class="welcome-lead">看看每一張圖片，把它放進「生物」或「非生物」。</p>
+        <div class="tease">
+          <img src="images/dog.jpg" alt="狗" />
+          <span class="tease-or" aria-hidden="true">?</span>
+          <img src="images/robot-dog.jpg" alt="機械狗" />
+        </div>
+        <button type="button" class="btn primary big" id="start-btn">開始測驗</button>
+      </div>
+    </div>
+
+    <div class="sheet" id="sheet" inert>
+      <header class="sheet-head">
+        <div class="brand">
+          <img src="favicon.svg" alt="" width="48" height="48" />
+          <div>
+            <p class="kicker">香港小學二年級 · 科學科</p>
+            <h1>生物與非生物</h1>
+            <p class="en-title">Living things and non-living things</p>
+          </div>
+        </div>
+        <p class="lesson">圖片分類測驗</p>
+      </header>
+
+      <main>
+        <p class="lead">點一下圖片，再點「生物」或「非生物」。用電腦也可以把圖片拖進箱子。</p>
+
+        <section class="bank" data-zone="pool" aria-labelledby="pool-title">
+          <div class="section-head">
+            <h2 id="pool-title">未分類圖片 <span class="count" id="count-pool">8</span></h2>
+          </div>
+          <div class="cards" id="pool" data-drop="pool" data-empty="全部圖片都分類了。" tabindex="-1"></div>
+        </section>
+
+        <div class="bins">
+          <section class="bin bin-living" data-zone="living" aria-labelledby="living-title">
+            <div class="section-head">
+              <div>
+                <h2 id="living-title">生物 <span class="count" id="count-living">0</span></h2>
+                <p>Living things · 有生命</p>
+              </div>
+            </div>
+            <div class="cards" id="living" data-drop="living" data-empty="把生物放在這裡"></div>
+          </section>
+
+          <section class="bin bin-nonliving" data-zone="nonliving" aria-labelledby="nonliving-title">
+            <div class="section-head">
+              <div>
+                <h2 id="nonliving-title">非生物 <span class="count" id="count-nonliving">0</span></h2>
+                <p>Non-living things · 沒有生命</p>
+              </div>
+            </div>
+            <div class="cards" id="nonliving" data-drop="nonliving" data-empty="把非生物放在這裡"></div>
+          </section>
+        </div>
+
+        <p class="colophon">香港小學二年級科學科 · 課堂測驗</p>
+        <p class="credits">
+          照片來自
+          <a href="https://commons.wikimedia.org/">Wikimedia Commons</a>，可自由使用。
+          機械狗：Saggittarius A（CC BY-SA 4.0）；青蛙造型垃圾桶：Prosperity Horizons（CC BY-SA 4.0）；蝴蝶：Thomas Bresson（CC BY 2.0）。其餘為公有領域或 CC0。
+        </p>
+      </main>
+
+    <div class="dock">
+      <div id="selected-bar" class="selected-bar" hidden>
+        <img id="selected-art" alt="" width="56" height="56" src="images/dog.jpg" />
+        <p>要把這張圖片放到哪裡？</p>
+        <div class="place-actions">
+          <button type="button" class="btn living" id="place-living">生物</button>
+          <button type="button" class="btn nonliving" id="place-nonliving">非生物</button>
+          <button type="button" class="btn ghost" id="place-pool">放回</button>
+        </div>
+      </div>
+      <div class="dock-row">
+        <div class="progress-wrap">
+          <div class="progress" aria-hidden="true"><span id="progress-bar"></span></div>
+          <p id="progress-text">已分類 0 / 8</p>
+        </div>
+        <button type="button" class="btn ghost" id="reset-btn">重新分類</button>
+      </div>
+    </div>
+    </div>
+
+    <div id="live" class="sr-only" aria-live="polite"></div>
+
+    <script src="js/content.js"></script>
+    <script src="js/app.js"></script>
+  </body>
+</html>
