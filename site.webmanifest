@@ -1,0 +1,19 @@
+{
+  "name": "生物與非生物 · 小二科學科",
+  "short_name": "生物與非生物",
+  "description": "香港小學二年級科學科測驗：把圖片分成生物和非生物。",
+  "lang": "zh-Hant-HK",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#efe6d6",
+  "theme_color": "#1f7a45",
+  "icons": [
+    {
+      "src": "favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
