@@ -304,13 +304,17 @@
     cursor: pointer;
     text-align: center;
     font-weight: 800;
-    touch-action: manipulation;
+    touch-action: none;
     user-select: none;
     -webkit-user-select: none;
+    -webkit-touch-callout: none;
+    -webkit-user-drag: none;
   }
   
-  .card:hover {
-    transform: translateY(-2px);
+  @media (hover: hover) and (pointer: fine) {
+    .card:hover {
+      transform: translateY(-2px);
+    }
   }
   
   .card .art {
@@ -327,6 +331,8 @@
     height: 100%;
     object-fit: contain;
     pointer-events: none;
+    -webkit-user-drag: none;
+    -webkit-touch-callout: none;
   }
   
   .card.is-selected {
