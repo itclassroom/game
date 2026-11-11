@@ -4,7 +4,7 @@ const state = {
   };
   
   let drag = null;
-  let blockClick = false;
+  let suppressClick = null;
   
   const $ = (id) => document.getElementById(id);
   
@@ -105,6 +105,7 @@ const state = {
     const button = document.createElement("button");
     button.type = "button";
     button.className = "card";
+    button.draggable = false;
     button.dataset.id = item.id;
   
     const art = document.createElement("span");
@@ -134,7 +135,6 @@ const state = {
   }
   
   function onCardClick(id) {
-    if (blockClick) return;
     state.selectedId = state.selectedId === id ? null : id;
     updateSelection();
   }
@@ -161,66 +161,191 @@ const state = {
     });
     highlightZone(null);
   }
-  
-  document.addEventListener("click", (event) => {
-    const card = event.target.closest(".card");
-    if (!card) return;
-    onCardClick(card.dataset.id);
-  });
-  
-  document.addEventListener("pointerdown", (event) => {
-    if (event.pointerType !== "mouse" || event.button !== 0) return;
-    const card = event.target.closest(".card");
-    if (!card) return;
-    drag = {
-      id: card.dataset.id,
-      pointerId: event.pointerId,
-      x: event.clientX,
-      y: event.clientY,
-      moved: false,
-      ghost: null,
-    };
-  });
-  
-  document.addEventListener("pointermove", (event) => {
-    if (!drag || event.pointerId !== drag.pointerId) return;
-    const dx = event.clientX - drag.x;
-    const dy = event.clientY - drag.y;
+
+  function rememberClick(x, y, pointerType) {
+    suppressClick = { x, y, pointerType, at: Date.now(), until: Date.now() + 280 };
+  }
+
+  function kickScroll() {
+    if (!drag || drag.scrollQueued) return;
+    drag.scrollQueued = true;
+    requestAnimationFrame(() => {
+      if (drag) drag.scrollQueued = false;
+      if (!drag || !drag.moved) return;
+      const margin = 56;
+      const y = drag.lastY;
+      let dy = 0;
+      if (y < margin) dy = -Math.max(6, Math.round((margin - y) / 5));
+      else if (y > window.innerHeight - margin) dy = Math.max(6, Math.round((y - (window.innerHeight - margin)) / 5));
+      if (!dy) return;
+      const before = window.scrollY;
+      window.scrollBy(0, dy);
+      if (window.scrollY === before) return;
+      highlightZone(zoneAt(drag.lastX, drag.lastY));
+      kickScroll();
+    });
+  }
+
+  function updateDrag(x, y) {
+    if (!drag) return;
+    const dx = x - drag.x;
+    const dy = y - drag.y;
     if (!drag.moved) {
-      if (Math.hypot(dx, dy) < 8) return;
+      const slop = drag.pointerType === "mouse" ? 8 : 12;
+      if (Math.hypot(dx, dy) < slop) return;
       drag.moved = true;
       const card = document.querySelector(`.card[data-id="${drag.id}"]`);
       const ghost = card.cloneNode(true);
       ghost.classList.add("ghost");
       ghost.classList.remove("is-selected");
+      ghost.setAttribute("aria-hidden", "true");
+      ghost.tabIndex = -1;
+      ghost.style.left = `${x}px`;
+      ghost.style.top = `${y}px`;
       card.classList.add("is-dragging");
       document.body.appendChild(ghost);
       drag.ghost = ghost;
     }
-    drag.ghost.style.left = `${event.clientX}px`;
-    drag.ghost.style.top = `${event.clientY}px`;
-    highlightZone(zoneAt(event.clientX, event.clientY));
+    drag.lastX = x;
+    drag.lastY = y;
+    drag.ghost.style.left = `${x}px`;
+    drag.ghost.style.top = `${y}px`;
+    highlightZone(zoneAt(x, y));
+    kickScroll();
+  }
+
+  function finishDrag(x, y) {
+    if (!drag) return;
+    const { id, moved, pointerType } = drag;
+    const zone = moved ? zoneAt(x, y) : null;
+    endDrag();
+    drag = null;
+    if (!moved) {
+      if (pointerType !== "mouse") {
+        rememberClick(x, y, pointerType);
+        onCardClick(id);
+      }
+      return;
+    }
+    rememberClick(x, y, pointerType);
+    if (zone) place(id, zone);
+  }
+
+  function touchFrom(event) {
+    if (!drag || drag.pointerType === "mouse") return null;
+    const touches = event.changedTouches;
+    if (!touches || !touches.length) return null;
+    if (drag.touchId == null) return touches[0];
+    return [...touches].find((touch) => touch.identifier === drag.touchId) || null;
+  }
+  
+  document.addEventListener("click", (event) => {
+    if (suppressClick && Date.now() <= suppressClick.until) {
+      const elapsed = Date.now() - suppressClick.at;
+      const near = Math.hypot(event.clientX - suppressClick.x, event.clientY - suppressClick.y) < 40;
+      const bogus = event.clientX === 0 && event.clientY === 0 && event.target.closest(".card");
+      const onCard = event.target.closest(".card");
+      const quickTouchCard = onCard && suppressClick.pointerType !== "mouse" && elapsed < 450;
+      if (near || bogus || quickTouchCard) {
+        suppressClick = null;
+        event.preventDefault();
+        event.stopPropagation();
+        return;
+      }
+    }
+    const card = event.target.closest(".card");
+    if (!card || card.classList.contains("ghost")) return;
+    onCardClick(card.dataset.id);
+  }, true);
+  
+  document.addEventListener("pointerdown", (event) => {
+    if (event.isPrimary === false || event.button !== 0) return;
+    const card = event.target.closest(".card");
+    if (!card || card.classList.contains("ghost") || drag) return;
+    if (event.pointerType !== "mouse" && event.cancelable) event.preventDefault();
+    drag = {
+      id: card.dataset.id,
+      pointerId: event.pointerId,
+      pointerType: event.pointerType,
+      touchId: null,
+      x: event.clientX,
+      y: event.clientY,
+      lastX: event.clientX,
+      lastY: event.clientY,
+      moved: false,
+      ghost: null,
+      scrollQueued: false,
+    };
+    try {
+      card.setPointerCapture(event.pointerId);
+    } catch (error) {
+      // Untrusted or already-ended pointers cannot be captured.
+    }
+  });
+  
+  document.addEventListener("pointermove", (event) => {
+    if (!drag || event.pointerId !== drag.pointerId) return;
+    if (drag.pointerType !== "mouse" && event.cancelable) event.preventDefault();
+    updateDrag(event.clientX, event.clientY);
   });
   
   document.addEventListener("pointerup", (event) => {
     if (!drag || event.pointerId !== drag.pointerId) return;
-    const { id, moved } = drag;
-    const zone = moved ? zoneAt(event.clientX, event.clientY) : null;
-    endDrag();
-    drag = null;
-    if (moved) {
-      blockClick = true;
-      queueMicrotask(() => {
-        blockClick = false;
-      });
-      if (zone) place(id, zone);
-    }
+    finishDrag(event.clientX, event.clientY);
   });
   
-  document.addEventListener("pointercancel", () => {
-    if (!drag) return;
+  document.addEventListener("pointercancel", (event) => {
+    if (!drag || event.pointerId !== drag.pointerId) return;
     endDrag();
     drag = null;
+  });
+
+  document.addEventListener("touchstart", (event) => {
+    const card = event.target.closest(".card");
+    if (!card || card.classList.contains("ghost")) return;
+    if (event.cancelable) event.preventDefault();
+    const touch = event.changedTouches[0];
+    if (!touch) return;
+    if (drag) {
+      drag.touchId = touch.identifier;
+      return;
+    }
+    drag = {
+      id: card.dataset.id,
+      pointerId: null,
+      pointerType: "touch",
+      touchId: touch.identifier,
+      x: touch.clientX,
+      y: touch.clientY,
+      lastX: touch.clientX,
+      lastY: touch.clientY,
+      moved: false,
+      ghost: null,
+      scrollQueued: false,
+    };
+  }, { passive: false });
+
+  document.addEventListener("touchmove", (event) => {
+    const touch = touchFrom(event);
+    if (!touch) return;
+    if (event.cancelable) event.preventDefault();
+    updateDrag(touch.clientX, touch.clientY);
+  }, { passive: false });
+
+  document.addEventListener("touchend", (event) => {
+    const touch = touchFrom(event);
+    if (!touch) return;
+    finishDrag(touch.clientX, touch.clientY);
+  });
+
+  document.addEventListener("touchcancel", (event) => {
+    if (!touchFrom(event)) return;
+    endDrag();
+    drag = null;
+  });
+
+  document.addEventListener("contextmenu", (event) => {
+    if (event.target.closest(".card")) event.preventDefault();
   });
   
   $("start-btn").addEventListener("click", () => {
@@ -248,4 +373,5 @@ const state = {
   
   buildBoard();
   $("start-btn").focus();
+  
   
