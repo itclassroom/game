@@ -374,4 +374,3 @@ const state = {
   buildBoard();
   $("start-btn").focus();
   
-  
